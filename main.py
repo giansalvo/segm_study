@@ -131,7 +131,6 @@ def second_main(fin):
 
 
 #gians_segm.gians_main()
-gians_segm.fill_color_debug(gians_segm.cyan_lower, gians_segm.cyan_upper)
-gians_segm.fill_color_debug(gians_segm.white_lower, gians_segm.white_upper)
+gians_segm.fill_contours_white()
 fname="I1_test.jpg"
 #second_main(fname)
