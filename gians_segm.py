@@ -351,82 +351,21 @@ def fill_color_debug(lower_color, upper_color):
     cv2.imwrite(fn + "_DEBUG3.png", img_filled,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
     cv2.imshow('Contours Filled with Green ***', img_filled)
 
+    # sharpen contours: change all non-black pixels to "fill_color"
     img_green_seg = img_filled.copy()
-    # DOESNT WORK AS EXPECTED
     # # non_black_pixels_mask = np.any(img_green_seg != [0, 0, 0], axis=-1)
     # # other way to do the same:
-    # black_pixels_mask = np.all(img_green_seg == [0, 0, 0], axis=-1)
-    # non_black_pixels_mask = ~black_pixels_mask
-    # img_green_seg[non_black_pixels_mask] = [255, 0, 0]
-
-    # DOESNT WORK AS EXPECTED
-    # img_gray = cv2.cvtColor(img_filled, cv2.COLOR_BGR2GRAY)
-    # temp = [[[0, 0, 255] for j in i] for i in img_gray]
-    # dt = np.dtype('f8')
-    # img_green_seg = np.array(temp, dtype=dt)
-
-    segmentation_sharpening_DEBUG()
-
-    # DOESNT WORK AS EXPECTED TODO try to save in png format instead?
-    # loop over the image, pixel by pixel TODO improve with bitwise masks
-    for y in range(0, img_h):
-        for x in range(0, img_w):
-            if np.any(img_green_seg[y, x] != 0):
-                img_green_seg[y][x] = [0, 0, 0]
-            else:
-                img_green_seg[y][x] = [255, 0, 0]
-    cv2.imwrite(fn + "_DEBUG4.jpg", img_green_seg, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-    cv2.imwrite(fn + "_DEBUG4.png", img_green_seg, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-    cv2.imshow('non black pixel to Green ***', img_green_seg)
+    black_pixels_mask = np.all(img_green_seg == [0, 0, 0], axis=-1)
+    non_black_pixels_mask = ~black_pixels_mask
+    img_green_seg[non_black_pixels_mask] = [0, 255, 0]
+    cv2.imwrite(fn + "_DEBUG4C.jpg", img_green_seg, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+    cv2.imwrite(fn + "_DEBUG4C.png", img_green_seg, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+    cv2.imshow('DEBUG4C ***', img_green_seg)
     cv2.waitKey()
 
 
-def fill_color_two_pass(lower_color, upper_color):
-    # thick=3 NOT GOOD! thick=2 THE BEST BUT NEED SECOND PASS BECAUSE OF DISCONNECTIONS!
-    contour_thick = 2
-    fn, fext = os.path.splitext(os.path.basename(fname)) #TODO DEBUG
-
-    img = cv2.imread(fname)
-    cv2.imshow('Original ***', img)
-    cv2.imwrite(fn + "_DEBUG0.jpg", img)
-
-    for i in [1, 2]:
-        imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-
-        mask_color = cv2.inRange(imghsv, lower_color, upper_color)
-
-        # Close contour
-        # ksize=(3,3,) more disconnections; ksize=(5,5) THE BEST; ksize=(7,7) bigger border
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        # iteration=2 NOT GOOD!
-        img_close_contours = cv2.morphologyEx(mask_color, cv2.MORPH_CLOSE, kernel, iterations=1)
-        cv2.imshow('image with closed contours ***', img_close_contours)
-        cv2.imwrite(fn + "_DEBUG1.jpg", img_close_contours)
-
-        # Find outer contour and fill them
-        cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # RGB image black
-        cv2.drawContours(img_contours, cnts, -1, upper_color.tolist(), contour_thick)
-        cv2.imshow('drawcontours ***', img_contours)
-        cv2.imwrite(fn + "_DEBUG2.jpg", img_contours)
-        #cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-        #for c in cnts:
-        #   cv2.drawContours(img, [c], -1, contour_color, thick)
-
-        img_filled = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # RGB image black
-        cv2.fillPoly(img_filled, pts=cnts, color=upper_color.tolist())
-
-        img = img_filled
-        fn, fext = os.path.splitext(os.path.basename(fname))
-
-        cv2.imwrite(fn + "_DEBUG3.jpg", img)
-        cv2.imshow('Contours Filled with Green ***', img)
-        cv2.waitKey()
-
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
-
 def segmentation_sharpening_DEBUG():
+    # THIS GIVES BIGGER CONTOURS BECAUSE STARTS FROM THE JPEG FILE
     img_green_seg = cv2.imread("I_bicolor_DEBUG3.jpg")
     (img_h, img_w) = img_green_seg.shape[:2]
     # loop over the image, pixel by pixel TODO improve with bitwise masks
