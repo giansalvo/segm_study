@@ -26,14 +26,14 @@ contour_color = (0, 255, 0)  # green contour (BGR)
 fill_color = list(contour_color)
 
 
-def mesure_area(image_rgb, color):
+def measure_area(image_rgb, color_rgb):
     # image_rgb = np.array(Image.open("p.png").convert('RGB'))
 
     # Work out what we are looking for
     # color = [254, 254, 254]
 
     # Find all pixels where the 3 RGB values match "color", and count them
-    result = np.count_nonzero(np.all(image_rgb == color, axis=2))
+    result = np.count_nonzero(np.all(image_rgb == color_rgb, axis=2))
     return result
 
 
@@ -221,7 +221,7 @@ def contours_with_colour_and_fill_2(finput, lower_color, upper_color, contour_co
 
     img = cv2.imread(finput)
     img = anonimize(img)
-    area = mesure_area(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), fill_color)
+    area = measure_area(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), fill_color)
     logger.info("Area1=" + str(area))
     imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -271,12 +271,12 @@ def gians_main():
     # test fill area
     fill_triangle()
 
-    # test mesure area
+    # test measure area
     # Open image and make into numpy array
     image = np.array(cv2.imread(fname))
     image = anonimize(image)
     print(type(image))
-    area = mesure_area(image, [255, 255, 255])
+    area = measure_area(image, [255, 255, 255])
     put_text(image, "Area=" + str(area) + " px")
     fn, fext = os.path.splitext(os.path.basename(fname))
     cv2.imwrite(fn + "_area.jpg", image)
@@ -294,7 +294,7 @@ def gians_main():
     # image = np.array(cv2.imread(fname))
     print(type(image))
     area = 0
-    # area = mesure_area(image, fill_color) # TODO THIS LINE THROWS AN ERROR
+    # area = measure_area(image, fill_color) # TODO THIS LINE THROWS AN ERROR
     put_text(image, "Area=TODO " + str(area) + " px")
 
     cv2.imwrite(fn + "_D.jpg", image)
@@ -326,6 +326,8 @@ def fill_contours_white():
 
     cv2.imshow('Original Image', img)
     cv2.imwrite(fn + "_DEBUG0.png", img,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+
+    # TODO: suppress artifact "A" (you need two input files: with/without trace)
 
     # change color space and set color mask
     imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -416,6 +418,12 @@ def fill_contours_white():
     kernel_erosion = np.ones((5, 5), np.uint8)
     # using the OpenCV erode command to morphologically process the images that user wants to modify
     img_filled = cv2.erode(img_filled, kernel_erosion, iterations=1)
+
+    # Measure the area
+    area = measure_area(cv2.cvtColor(img_filled, cv2.COLOR_BGR2RGB), fill_color)
+    put_text(img_filled, "Area=" + str(area) + " px")
+
+    # Save file with text
     # cv2.imwrite(fn + "_DEBUG14.jpg", img_filled, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
     cv2.imwrite(fn + "_DEBUG14.png", img_filled,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
     cv2.imshow('Image filled', img_filled)
@@ -439,10 +447,13 @@ def fill_contours_cyan():
     (img_h, img_w) = img_orig.shape[:2]
     logger.info("Image loaded: " + str(img_w) + "x" + str(img_h))
 
-    cv2.imshow('Original ***', img)
-    cv2.imwrite(fn + "_DEBUG0.jpg", img)
-    imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    cv2.imshow('Original Image', img)
+    cv2.imwrite(fn + "_DEBUG0.png", img,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
 
+    # TODO: suppress artifact "A" (you need two input files: with/without trace)
+
+    # change color space and set color mask
+    imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask_color = cv2.inRange(imghsv, lower_color, upper_color)
 
     # Close contour
@@ -450,26 +461,17 @@ def fill_contours_cyan():
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     # iteration=2 NOT GOOD!
     img_close_contours = cv2.morphologyEx(mask_color, cv2.MORPH_CLOSE, kernel, iterations=1)
-    cv2.imshow('image with closed contours ***', img_close_contours)
-    cv2.imwrite(fn + "_DEBUG1.jpg", img_close_contours)
+    cv2.imshow('Contours', img_close_contours)
+    cv2.imwrite(fn + "_DEBUG1.png", img_close_contours,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
 
-    # Find outer contour and fill them
+    # Find outer contours
     cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # RGB image black
     cv2.drawContours(img_contours, cnts, -1, contour_color, contour_thick)
-    cv2.imshow('drawcontours ***', img_contours)
-    cv2.imwrite(fn + "_DEBUG2.jpg", img_contours)
-    #cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    #for c in cnts:
-    #   cv2.drawContours(img, [c], -1, contour_color, thick)
 
-    img_filled = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # RGB image black
+    # fill contours
+    img_filled = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR image black
     cv2.fillPoly(img_filled, pts=cnts, color=fill_color)
-
-    fn, fext = os.path.splitext(os.path.basename(fname))
-    cv2.imwrite(fn + "_DEBUG3.jpg", img_filled, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-    cv2.imwrite(fn + "_DEBUG3.png", img_filled,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-    cv2.imshow('Contours Filled with Green ***', img_filled)
 
     # sharpen contours: change all non-black pixels to "fill_color"
     img_green_seg = img_filled.copy()
@@ -478,10 +480,79 @@ def fill_contours_cyan():
     black_pixels_mask = np.all(img_green_seg == [0, 0, 0], axis=-1)
     non_black_pixels_mask = ~black_pixels_mask
     img_green_seg[non_black_pixels_mask] = [0, 255, 0]
-    cv2.imwrite(fn + "_DEBUG4C.jpg", img_green_seg, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-    cv2.imwrite(fn + "_DEBUG4C.png", img_green_seg, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-    cv2.imshow('DEBUG4C ***', img_green_seg)
+
+    # PASS TWO: Close contour
+    imghsv = cv2.cvtColor(img_green_seg, cv2.COLOR_BGR2HSV)
+    mask_green = cv2.inRange(imghsv, green_lower, green_upper)
+    # ksize=(3,3) more disconnections; ksize=(5,5) THE BEST; ksize=(7,7) too bigger border
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # iteration=2 NOT GOOD!
+    img_close_contours = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+    # PASS TWO: Find outer contours
+    cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR black image
+    cv2.drawContours(img_contours, cnts, -1, contour_color, contour_thick)
+
+    # PASS THREE: Close contour
+    imghsv = cv2.cvtColor(img_contours, cv2.COLOR_BGR2HSV)
+    mask_green = cv2.inRange(imghsv, green_lower, green_upper)
+    # ksize=(3,3) more disconnections; ksize=(5,5) THE BEST; ksize=(7,7) too bigger border
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # iteration=2 NOT GOOD!
+    img_close_contours = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+    # PASS THREE: Find outer contours
+    cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR black image
+    cv2.drawContours(img_contours, cnts, -1, contour_color, contour_thick)
+
+    # # PASS FOUR: Close contour
+    # imghsv = cv2.cvtColor(img_contours, cv2.COLOR_BGR2HSV)
+    # mask_green = cv2.inRange(imghsv, green_lower, green_upper)
+    # # ksize=(3,3) more disconnections; ksize=(5,5) THE BEST; ksize=(7,7) too bigger border
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # # iteration=2 NOT GOOD!
+    # img_close_contours = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel, iterations=1)
+    #
+    # # PASS FOUR: Find outer contours
+    # cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR black image
+    # cv2.drawContours(img_contours, cnts, -1, contour_color, contour_thick)
+
+    # # PASS FIVE: Close contour
+    # imghsv = cv2.cvtColor(img_contours, cv2.COLOR_BGR2HSV)
+    # mask_green = cv2.inRange(imghsv, green_lower, green_upper)
+    # # ksize=(3,3) more disconnections; ksize=(5,5) THE BEST; ksize=(7,7) too bigger border
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # # iteration=2 NOT GOOD!
+    # img_close_contours = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel, iterations=1)
+    #
+    # # PASS FOUR: Find outer contours
+    # cnts, _ = cv2.findContours(img_close_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # img_contours = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR black image
+    # cv2.drawContours(img_contours, cnts, -1, contour_color, contour_thick)
+
+    # PASS LAST: fill contours
+    img_filled = np.zeros((img.shape[0], img.shape[1], 3), dtype="uint8")  # BGR black image
+    cv2.fillPoly(img_filled, pts=cnts, color=fill_color)
+
+    # PASS LAST: erosion
+    kernel_erosion = np.ones((5, 5), np.uint8)
+    # using the OpenCV erode command to morphologically process the images that user wants to modify
+    img_filled = cv2.erode(img_filled, kernel_erosion, iterations=1)
+
+    # Measure the area
+    area = measure_area(cv2.cvtColor(img_filled, cv2.COLOR_BGR2RGB), fill_color)
+    put_text(img_filled, "Area=" + str(area) + " px")
+
+    # Save file with text
+    # cv2.imwrite(fn + "_DEBUG14.jpg", img_filled, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+    cv2.imwrite(fn + "_DEBUG14.png", img_filled,  [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+    cv2.imshow('Image filled', img_filled)
+
     cv2.waitKey()
+
 
 
 def segmentation_sharpening_DEBUG():
