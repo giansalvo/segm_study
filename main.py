@@ -131,6 +131,6 @@ def second_main(fin):
 
 
 #gians_segm.gians_main()
-gians_segm.fill_contours_cyan()
+gians_segm.fill_contours_all_files()
 fname="I1_test.jpg"
 #second_main(fname)
